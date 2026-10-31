@@ -7,7 +7,7 @@
 
 ## 1. Загальні правила
 
-- Запити й відповіді з тілом використовують `Content-Type: application/json`.
+- Запити й відповіді з тілом використовують медіатип `application/json`. Допускаються коректні параметри медіатипу, наприклад `application/json; charset=utf-8`; порівняння не є буквальним порівнянням усього рядка заголовка.
 - `Category ID` і `Transaction ID` у контракті представлені додатними цілими числами.
 - `type` приймає лише рядок `income` або `expense`.
 - `amount`, `total_income`, `total_expenses` і `current_balance` передаються як десяткові рядки UAH із рівно двома цифрами після крапки, наприклад `"1250.00"`. `amount` має бути більшим за `0.00`.
@@ -41,7 +41,7 @@
 |---|---|
 | `400 Bad Request` | Тіло не є синтаксично коректним JSON. Застосовується лише до операцій із request body. |
 | `405 Method Not Allowed` | Для URI використано HTTP-метод, якого немає серед дев’яти визначених операцій. |
-| `415 Unsupported Media Type` | Операція з request body отримала `Content-Type`, відмінний від `application/json`. |
+| `415 Unsupported Media Type` | Операція з request body отримала медіатип, відмінний від `application/json`, або некоректні параметри медіатипу. Коректні параметри, зокрема `charset=utf-8`, дозволені. |
 | `422 Unprocessable Content` | Параметр або JSON синтаксично прочитано, але він відсутній, має неправильний тип, формат, значення чи порушує правило валідації. |
 | `500 Internal Server Error` | Сервер не може прочитати або стійко зберегти дані чи завершити операцію без порушення цілісності. Дані не змінюються частково. |
 
@@ -54,7 +54,7 @@
 
 | Розташування | Назва | Тип | Обов’язковість | Обмеження |
 |---|---|---|---|---|
-| Header | `Content-Type` | string | так | Рівно `application/json`. |
+| Header | `Content-Type` | string | так | Медіатип `application/json`; дозволені коректні параметри, наприклад `charset=utf-8`. |
 
 Path і query parameters відсутні. Спеціальні заголовки, крім `Content-Type`, не потрібні.
 
@@ -90,7 +90,7 @@ Path і query parameters відсутні. Спеціальні заголовк
 |---|---|
 | `201 Created` | Category успішно перевірена і стійко збережена з новим Category ID. |
 | `400 Bad Request` | Некоректний JSON. |
-| `415 Unsupported Media Type` | `Content-Type` відрізняється від `application/json`. |
+| `415 Unsupported Media Type` | Медіатип не є `application/json` або його параметри некоректні. |
 | `409 Conflict` | Category з такою самою нормалізованою назвою вже існує в межах цього типу. |
 | `422 Unprocessable Content` | Відсутні `name`/`type`, неправильний тип значення, недопустимий `type`, порожня або задовга назва чи невідоме поле. |
 | `500 Internal Server Error` | Дані неможливо прочитати або Category неможливо стійко зберегти. |
@@ -144,7 +144,7 @@ Path, query і спеціальні header parameters відсутні.
 | Розташування | Назва | Тип | Обов’язковість | Обмеження |
 |---|---|---|---|---|
 | Path | `category_id` | integer | так | Додатне ціле число; незмінний Category ID. |
-| Header | `Content-Type` | string | так | Рівно `application/json`. |
+| Header | `Content-Type` | string | так | Медіатип `application/json`; дозволені коректні параметри, наприклад `charset=utf-8`. |
 
 Query parameters відсутні.
 
@@ -182,7 +182,7 @@ PATCH є частковим: `id` і `type` не передаються та н�
 | `400 Bad Request` | Некоректний JSON. |
 | `404 Not Found` | Category з указаним `category_id` не існує. |
 | `409 Conflict` | Нова нормалізована назва дублює іншу Category того самого типу. |
-| `415 Unsupported Media Type` | `Content-Type` відрізняється від `application/json`. |
+| `415 Unsupported Media Type` | Медіатип не є `application/json` або його параметри некоректні. |
 | `422 Unprocessable Content` | Некоректний ID, відсутнє/некоректне `name`, порожній об’єкт або заборонене поле. |
 | `500 Internal Server Error` | Дані неможливо прочитати або перейменування неможливо стійко зберегти. |
 
@@ -226,7 +226,7 @@ Query і спеціальні header parameters відсутні.
 
 | Розташування | Назва | Тип | Обов’язковість | Обмеження |
 |---|---|---|---|---|
-| Header | `Content-Type` | string | так | Рівно `application/json`. |
+| Header | `Content-Type` | string | так | Медіатип `application/json`; дозволені коректні параметри, наприклад `charset=utf-8`. |
 | Header | `X-Client-Local-Date` | string | так | Реальна дата формату `YYYY-MM-DD`; поточна локальна дата пристрою User для перевірки `date`. |
 
 Path і query parameters відсутні.
@@ -274,7 +274,7 @@ Path і query parameters відсутні.
 | `201 Created` | Transaction пройшла всі перевірки й стійко збережена з новим Transaction ID. |
 | `400 Bad Request` | Некоректний JSON. |
 | `404 Not Found` | Category з указаним `category_id` не існує. |
-| `415 Unsupported Media Type` | `Content-Type` відрізняється від `application/json`. |
+| `415 Unsupported Media Type` | Медіатип не є `application/json` або його параметри некоректні. |
 | `422 Unprocessable Content` | Відсутній/некоректний заголовок, поле чи тип; сума недодатна або неканонічна; дата неіснуюча/майбутня; Description задовгий; тип Category не відповідає Transaction; є невідоме поле. |
 | `500 Internal Server Error` | Дані неможливо прочитати або Transaction неможливо стійко зберегти. |
 
@@ -345,7 +345,7 @@ Path і спеціальні header parameters відсутні. Кілька а
 | Розташування | Назва | Тип | Обов’язковість | Обмеження |
 |---|---|---|---|---|
 | Path | `transaction_id` | integer | так | Додатне ціле число; незмінний Transaction ID. |
-| Header | `Content-Type` | string | так | Рівно `application/json`. |
+| Header | `Content-Type` | string | так | Медіатип `application/json`; дозволені коректні параметри, наприклад `charset=utf-8`. |
 | Header | `X-Client-Local-Date` | string | так | Реальна дата `YYYY-MM-DD`; поточна локальна дата пристрою User. |
 
 Query parameters відсутні.
@@ -394,7 +394,7 @@ Query parameters відсутні.
 | `200 OK` | Передані поля застосовано атомарно; Transaction ID не змінився. |
 | `400 Bad Request` | Некоректний JSON. |
 | `404 Not Found` | Transaction або передана Category не існує. |
-| `415 Unsupported Media Type` | `Content-Type` відрізняється від `application/json`. |
+| `415 Unsupported Media Type` | Медіатип не є `application/json` або його параметри некоректні. |
 | `422 Unprocessable Content` | Некоректний ID/header/поле; порожній об’єкт; заборонене поле; `null` не для Description; результуючий стан порушує правила Transaction або відповідність типу Category. Попередній стан збережено. |
 | `500 Internal Server Error` | Дані неможливо прочитати або оновлення неможливо стійко зберегти. |
 
