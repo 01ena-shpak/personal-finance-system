@@ -3,7 +3,7 @@
   "info": {
     "title": "Personal Finance System REST API",
     "version": "1.0.0",
-    "description": "Контракт локального FastAPI-сервера для Flet-клієнта. Специфікація не додає функціональності поза SRS."
+    "description": "REST API для керування категоріями, транзакціями та фінансовими підсумками Personal Finance System. Специфікація не додає функціональності поза SRS."
   },
   "servers": [
     {

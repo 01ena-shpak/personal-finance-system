@@ -125,3 +125,50 @@ JSON успішно розібрано стандартним JSON parser. Пр�
 ## 7. Висновок
 
 Після виправлення явного no-auth security declaration специфікація проходить Redocly CLI з 0 errors. Два recommended warnings і одне minimal warning є некритичними, не приховані та обґрунтовані вище. Підсумковий статус перевірки — **PASS**.
+
+## 8. Повторна валідація після рішення API-GATE
+
+**Дата:** 2026-10-31
+**Причина:** `info.description` замінено на нейтральний опис REST API без згадок технологій клієнта або сервера; operations, schemas і поведінка контракту не змінювалися.
+
+Фактично виконано:
+
+```powershell
+node --version
+npm --version
+npx --yes @redocly/cli@2.72.1 --version
+npx --yes @redocly/cli@2.72.1 lint spec/openapi.json --format json
+npx --yes @redocly/cli@2.72.1 lint spec/openapi.json --extends minimal
+```
+
+Перший запуск `npx` у restricted environment завершився `ENOTCACHED`, оскільки пакет не був доступний у дозволеному локальному npm cache. Команди Redocly повторно виконано з дозволеним доступом до офіційного npm registry; глобальне встановлення не виконувалося.
+
+Фактичні версії:
+
+- Node.js: `v24.11.1`;
+- npm: `11.6.2`;
+- Redocly CLI: `2.72.1`.
+
+Результат recommended lint:
+
+- errors: 0;
+- warnings: 2 (`info-license`, `no-server-example.com`);
+- ignored: 0;
+- повідомлення: `Your API description is valid`.
+
+Результат minimal lint:
+
+- errors: 0;
+- warnings: 1 (`no-server-example.com`);
+- специфікацію визнано валідною.
+
+Попередження залишаються обґрунтованими відповідно до розділу 5: ліцензію проєкту не затверджено, а `localhost` є затвердженою адресою локальної демонстрації. Правила не вимикалися, ignore-файл не застосовувався.
+
+Після повторної валідації додатково звірено API traceability:
+
+- OpenAPI 3.0.3, operations: 9;
+- у `x-req-ids` присутні 24/24 `REQ-F` і 6/6 `REQ-NF`;
+- усі 30 REQ-ID присутні в API-розділі `spec/traceability-matrix.md`;
+- пропущених або зайвих пар REQ-ID ↔ operationId: 0.
+
+**Підсумковий статус повторної валідації: PASS.**
