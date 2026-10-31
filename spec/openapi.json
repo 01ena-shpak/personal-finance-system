@@ -1,0 +1,740 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Personal Finance System REST API",
+    "version": "1.0.0",
+    "description": "Контракт локального FastAPI-сервера для Flet-клієнта. Специфікація не додає функціональності поза SRS."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:{port}/api",
+      "description": "Локальна розробка, тестування та демонстрація на Windows 11",
+      "variables": {
+        "port": {
+          "default": "8000",
+          "description": "Локальний TCP port FastAPI-сервера"
+        }
+      }
+    }
+  ],
+  "security": [],
+  "tags": [
+    {"name": "Categories", "description": "Операції над Category"},
+    {"name": "Transactions", "description": "Операції над Transaction і Transaction List"},
+    {"name": "Financial Summary", "description": "Total Income, Total Expenses і Current Balance"}
+  ],
+  "paths": {
+    "/categories": {
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Створити Category",
+        "operationId": "createCategory",
+        "x-req-ids": ["REQ-F-001", "REQ-F-010", "REQ-F-011", "REQ-NF-001", "REQ-NF-002", "REQ-NF-004", "REQ-NF-005"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CategoryCreate"},
+              "example": {"name": "Зарплата", "type": "income"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category створено і стійко збережено",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Category"},
+                "example": {"id": 1, "name": "Зарплата", "type": "income"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {
+            "description": "Назва Category конфліктує з наявною Category того самого типу",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                "example": {
+                  "error": {
+                    "code": "CATEGORY_NAME_CONFLICT",
+                    "message": "Category з такою назвою вже існує в межах цього типу.",
+                    "field": "name",
+                    "rule": "unique_case_insensitive_within_type"
+                  }
+                }
+              }
+            }
+          },
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      },
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Отримати список Category",
+        "operationId": "listCategories",
+        "x-req-ids": ["REQ-F-012", "REQ-NF-003", "REQ-NF-006"],
+        "responses": {
+          "200": {
+            "description": "Список Category; масив може бути порожнім",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CategoryListResponse"},
+                "examples": {
+                  "categories": {
+                    "value": [
+                      {"id": 1, "name": "Зарплата", "type": "income"},
+                      {"id": 2, "name": "Їжа", "type": "expense"}
+                    ]
+                  },
+                  "empty": {"value": []}
+                }
+              }
+            }
+          },
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/categories/{category_id}": {
+      "patch": {
+        "tags": ["Categories"],
+        "summary": "Перейменувати Category",
+        "operationId": "renameCategory",
+        "x-req-ids": ["REQ-F-001", "REQ-F-011", "REQ-F-013", "REQ-NF-001", "REQ-NF-002", "REQ-NF-004", "REQ-NF-005"],
+        "parameters": [{"$ref": "#/components/parameters/CategoryId"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CategoryPatch"},
+              "example": {"name": "Харчування"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category перейменовано",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Category"},
+                "example": {"id": 2, "name": "Харчування", "type": "expense"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {
+            "description": "Нова назва конфліктує з іншою Category того самого типу",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                "example": {
+                  "error": {
+                    "code": "CATEGORY_NAME_CONFLICT",
+                    "message": "Category з такою назвою вже існує в межах цього типу.",
+                    "field": "name",
+                    "rule": "unique_case_insensitive_within_type"
+                  }
+                }
+              }
+            }
+          },
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      },
+      "delete": {
+        "tags": ["Categories"],
+        "summary": "Видалити невикористану Category",
+        "operationId": "deleteCategory",
+        "x-req-ids": ["REQ-F-001", "REQ-F-014", "REQ-NF-001", "REQ-NF-002"],
+        "parameters": [{"$ref": "#/components/parameters/CategoryId"}],
+        "responses": {
+          "204": {"description": "Category видалено; response body відсутнє"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {
+            "description": "Category використовується Transaction і не видалена",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                "example": {
+                  "error": {
+                    "code": "CATEGORY_IN_USE",
+                    "message": "Category не можна видалити, оскільки її використовує Transaction."
+                  }
+                }
+              }
+            }
+          },
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "tags": ["Transactions"],
+        "summary": "Створити Transaction",
+        "operationId": "createTransaction",
+        "x-req-ids": ["REQ-F-001", "REQ-F-002", "REQ-F-003", "REQ-F-004", "REQ-F-005", "REQ-F-006", "REQ-F-007", "REQ-NF-001", "REQ-NF-002", "REQ-NF-004", "REQ-NF-005"],
+        "parameters": [{"$ref": "#/components/parameters/ClientLocalDate"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/TransactionCreate"},
+              "example": {
+                "type": "income",
+                "amount": "25000.00",
+                "date": "2026-10-30",
+                "category_id": 1,
+                "description": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction створено і стійко збережено",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Transaction"},
+                "example": {
+                  "id": 10,
+                  "type": "income",
+                  "amount": "25000.00",
+                  "date": "2026-10-30",
+                  "category_id": 1,
+                  "category_name": "Зарплата",
+                  "description": null
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      },
+      "get": {
+        "tags": ["Transactions"],
+        "summary": "Отримати Transaction List",
+        "description": "Filter поєднуються через AND. date_from і date_to передаються лише разом, межі включні, date_from не може бути пізнішою за date_to. Ці міжпараметрові правила задокументовані, але OpenAPI 3.0.3 не може повністю виразити їх схемою.",
+        "operationId": "listTransactions",
+        "x-req-ids": ["REQ-F-002", "REQ-F-015", "REQ-F-016", "REQ-F-017", "REQ-F-018", "REQ-F-019", "REQ-F-020", "REQ-NF-003", "REQ-NF-006"],
+        "parameters": [
+          {"$ref": "#/components/parameters/TransactionTypeFilter"},
+          {"$ref": "#/components/parameters/CategoryIdFilter"},
+          {"$ref": "#/components/parameters/DateFrom"},
+          {"$ref": "#/components/parameters/DateTo"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction List, відсортований за date від новіших до старіших; масив може бути порожнім",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/TransactionListResponse"},
+                "examples": {
+                  "transactions": {
+                    "value": [
+                      {
+                        "id": 10,
+                        "type": "income",
+                        "amount": "25000.00",
+                        "date": "2026-10-30",
+                        "category_id": 1,
+                        "category_name": "Зарплата",
+                        "description": null
+                      }
+                    ]
+                  },
+                  "empty": {"value": []}
+                }
+              }
+            }
+          },
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/transactions/{transaction_id}": {
+      "patch": {
+        "tags": ["Transactions"],
+        "summary": "Частково оновити Transaction",
+        "description": "Пропущені поля не змінюються; null дозволений лише для description. Після накладання patch перевіряється повний результуючий стан. Відповідність type і Category та правило date <= X-Client-Local-Date є міжпольовими правилами, які не можна повністю виразити OpenAPI 3.0.3.",
+        "operationId": "updateTransaction",
+        "x-req-ids": ["REQ-F-001", "REQ-F-002", "REQ-F-004", "REQ-F-005", "REQ-F-006", "REQ-F-007", "REQ-F-008", "REQ-NF-001", "REQ-NF-002", "REQ-NF-004", "REQ-NF-005"],
+        "parameters": [
+          {"$ref": "#/components/parameters/TransactionId"},
+          {"$ref": "#/components/parameters/ClientLocalDate"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/TransactionPatch"},
+              "example": {"amount": "27500.00", "description": "Зарплата з премією"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transaction атомарно оновлено",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Transaction"},
+                "example": {
+                  "id": 10,
+                  "type": "income",
+                  "amount": "27500.00",
+                  "date": "2026-10-30",
+                  "category_id": 1,
+                  "category_name": "Зарплата",
+                  "description": "Зарплата з премією"
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      },
+      "delete": {
+        "tags": ["Transactions"],
+        "summary": "Остаточно видалити Transaction",
+        "operationId": "deleteTransaction",
+        "x-req-ids": ["REQ-F-001", "REQ-F-009", "REQ-NF-001", "REQ-NF-002"],
+        "parameters": [{"$ref": "#/components/parameters/TransactionId"}],
+        "responses": {
+          "204": {"description": "Transaction видалено; response body відсутнє"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "422": {"$ref": "#/components/responses/ValidationError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/financial-summary": {
+      "get": {
+        "tags": ["Financial Summary"],
+        "summary": "Отримати фінансові показники",
+        "description": "Показники завжди обчислюються за всіма збереженими Transaction і не приймають Filter.",
+        "operationId": "getFinancialSummary",
+        "x-req-ids": ["REQ-F-002", "REQ-F-021", "REQ-F-022", "REQ-F-023", "REQ-F-024", "REQ-NF-003", "REQ-NF-006"],
+        "responses": {
+          "200": {
+            "description": "Total Income, Total Expenses і Current Balance",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/FinancialSummary"},
+                "examples": {
+                  "summary": {
+                    "value": {
+                      "total_income": "25000.00",
+                      "total_expenses": "850.50",
+                      "current_balance": "24149.50"
+                    }
+                  },
+                  "empty": {
+                    "value": {
+                      "total_income": "0.00",
+                      "total_expenses": "0.00",
+                      "current_balance": "0.00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "CategoryId": {
+        "name": "category_id",
+        "in": "path",
+        "required": true,
+        "description": "Category ID",
+        "schema": {"$ref": "#/components/schemas/PositiveId"}
+      },
+      "TransactionId": {
+        "name": "transaction_id",
+        "in": "path",
+        "required": true,
+        "description": "Transaction ID",
+        "schema": {"$ref": "#/components/schemas/PositiveId"}
+      },
+      "ClientLocalDate": {
+        "name": "X-Client-Local-Date",
+        "in": "header",
+        "required": true,
+        "description": "Поточна локальна дата пристрою User для REQ-F-005",
+        "schema": {"$ref": "#/components/schemas/LocalDate"},
+        "example": "2026-10-31"
+      },
+      "TransactionTypeFilter": {
+        "name": "type",
+        "in": "query",
+        "required": false,
+        "description": "Filter за Transaction Type",
+        "schema": {"$ref": "#/components/schemas/TransactionType"}
+      },
+      "CategoryIdFilter": {
+        "name": "category_id",
+        "in": "query",
+        "required": false,
+        "description": "Filter за Category; коректний неіснуючий ID дає порожній список",
+        "schema": {"$ref": "#/components/schemas/PositiveId"}
+      },
+      "DateFrom": {
+        "name": "date_from",
+        "in": "query",
+        "required": false,
+        "description": "Включна початкова межа Date Range; використовується разом із date_to",
+        "schema": {"$ref": "#/components/schemas/LocalDate"}
+      },
+      "DateTo": {
+        "name": "date_to",
+        "in": "query",
+        "required": false,
+        "description": "Включна кінцева межа Date Range; використовується разом із date_from",
+        "schema": {"$ref": "#/components/schemas/LocalDate"}
+      }
+    },
+    "schemas": {
+      "PositiveId": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      },
+      "TransactionType": {
+        "type": "string",
+        "enum": ["income", "expense"]
+      },
+      "Amount": {
+        "type": "string",
+        "pattern": "^(?!(?:0\\.00)$)(?:0|[1-9][0-9]*)\\.[0-9]{2}$",
+        "description": "Додатна сума UAH із двома цифрами після крапки. Lookahead виражає > 0.00; реалізація також перевіряє десяткове значення без binary floating point.",
+        "example": "1250.00"
+      },
+      "NonNegativeMoney": {
+        "type": "string",
+        "pattern": "^(?:0|[1-9][0-9]*)\\.[0-9]{2}$",
+        "description": "Невід’ємне значення UAH із двома цифрами після крапки.",
+        "example": "0.00"
+      },
+      "SignedMoney": {
+        "type": "string",
+        "pattern": "^(?!-0\\.00$)-?(?:0|[1-9][0-9]*)\\.[0-9]{2}$",
+        "description": "Знакове значення UAH. Від’ємний нуль заборонений; реалізація нормалізує нуль як 0.00.",
+        "example": "-125.50"
+      },
+      "LocalDate": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+        "description": "Реальна календарна дата YYYY-MM-DD. Існування дати перевіряється семантично."
+      },
+      "CategoryNameInput": {
+        "type": "string",
+        "minLength": 1,
+        "description": "До перевірки сервер видаляє початкові й кінцеві пробіли. Нормалізована довжина 1..50; унікальність без урахування регістру перевіряється в межах type.",
+        "example": " Їжа "
+      },
+      "CategoryName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+        "description": "Нормалізована Category Name без крайніх пробілів."
+      },
+      "Description": {
+        "type": "string",
+        "maxLength": 255,
+        "nullable": true,
+        "description": "Необов’язковий Description; обробляється лише як текстові дані."
+      },
+      "Category": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "type"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/PositiveId"},
+          "name": {"$ref": "#/components/schemas/CategoryName"},
+          "type": {"$ref": "#/components/schemas/TransactionType"}
+        }
+      },
+      "CategoryCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type"],
+        "properties": {
+          "name": {"$ref": "#/components/schemas/CategoryNameInput"},
+          "type": {"$ref": "#/components/schemas/TransactionType"}
+        }
+      },
+      "CategoryPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {"$ref": "#/components/schemas/CategoryNameInput"}
+        }
+      },
+      "CategoryListResponse": {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/Category"}
+      },
+      "Transaction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "amount", "date", "category_id", "category_name", "description"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/PositiveId"},
+          "type": {"$ref": "#/components/schemas/TransactionType"},
+          "amount": {"$ref": "#/components/schemas/Amount"},
+          "date": {"$ref": "#/components/schemas/LocalDate"},
+          "category_id": {"$ref": "#/components/schemas/PositiveId"},
+          "category_name": {"$ref": "#/components/schemas/CategoryName"},
+          "description": {"$ref": "#/components/schemas/Description"}
+        },
+        "description": "category_name є read-only відображенням поточної назви Category. Flet-клієнт не показує id у Transaction List."
+      },
+      "TransactionCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "amount", "date", "category_id"],
+        "properties": {
+          "type": {"$ref": "#/components/schemas/TransactionType"},
+          "amount": {"$ref": "#/components/schemas/Amount"},
+          "date": {"$ref": "#/components/schemas/LocalDate"},
+          "category_id": {"$ref": "#/components/schemas/PositiveId"},
+          "description": {"$ref": "#/components/schemas/Description"}
+        },
+        "description": "date не пізніша за X-Client-Local-Date; Category існує та має type, що збігається з Transaction type. Ці міжпольові правила перевіряє реалізація."
+      },
+      "TransactionPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "type": {"$ref": "#/components/schemas/TransactionType"},
+          "amount": {"$ref": "#/components/schemas/Amount"},
+          "date": {"$ref": "#/components/schemas/LocalDate"},
+          "category_id": {"$ref": "#/components/schemas/PositiveId"},
+          "description": {"$ref": "#/components/schemas/Description"}
+        },
+        "description": "Пропущені поля не змінюються; null дозволений лише для description. Після накладання patch реалізація перевіряє весь результуючий стан, date та відповідність type/Category."
+      },
+      "TransactionListResponse": {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/Transaction"},
+        "description": "Елементи з різними date впорядковані від новіших до старіших; порядок однакових date не визначений."
+      },
+      "FinancialSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["total_income", "total_expenses", "current_balance"],
+        "properties": {
+          "total_income": {"$ref": "#/components/schemas/NonNegativeMoney"},
+          "total_expenses": {"$ref": "#/components/schemas/NonNegativeMoney"},
+          "current_balance": {"$ref": "#/components/schemas/SignedMoney"}
+        },
+        "description": "Показники за всіма збереженими Transaction незалежно від Filter."
+      },
+      "ApiErrorCode": {
+        "type": "string",
+        "enum": [
+          "MALFORMED_JSON",
+          "RESOURCE_NOT_FOUND",
+          "METHOD_NOT_ALLOWED",
+          "CATEGORY_NAME_CONFLICT",
+          "CATEGORY_IN_USE",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "VALIDATION_ERROR",
+          "DATA_READ_ERROR",
+          "DATA_WRITE_ERROR",
+          "INTERNAL_ERROR"
+        ]
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"$ref": "#/components/schemas/ApiErrorCode"},
+          "message": {"type": "string", "minLength": 1},
+          "field": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1}
+        },
+        "description": "field і rule обов’язкові разом для помилки конкретного поля. Залежність їх спільної присутності документована, але не може бути надійно виражена без ускладнення OpenAPI 3.0.3."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {"$ref": "#/components/schemas/ErrorDetail"}
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Request body не є коректним JSON",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "example": {
+              "error": {
+                "code": "MALFORMED_JSON",
+                "message": "Request body не є синтаксично коректним JSON."
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Потрібний ресурс не існує",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "example": {
+              "error": {
+                "code": "RESOURCE_NOT_FOUND",
+                "message": "Ресурс з указаним ID не існує.",
+                "field": "id",
+                "rule": "resource_exists"
+              }
+            }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "Метод не підтримується для URI",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "example": {
+              "error": {
+                "code": "METHOD_NOT_ALLOWED",
+                "message": "HTTP-метод не підтримується для цього URI."
+              }
+            }
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "Request body не використовує application/json",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "example": {
+              "error": {
+                "code": "UNSUPPORTED_MEDIA_TYPE",
+                "message": "Request body повинен використовувати медіатип application/json.",
+                "field": "Content-Type",
+                "rule": "application_json_media_type"
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Параметр або body порушує контракт чи доменне правило",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "examples": {
+              "invalidAmount": {
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Поле amount повинно містити додатну суму UAH із двома десятковими знаками.",
+                    "field": "amount",
+                    "rule": "positive_decimal_with_two_fraction_digits"
+                  }
+                }
+              },
+              "invalidDateRange": {
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Початкова дата Date Range не може бути пізнішою за кінцеву.",
+                    "field": "date_range",
+                    "rule": "date_from_not_after_date_to"
+                  }
+                }
+              },
+              "futureTransactionDate": {
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Дата Transaction не може бути пізнішою за поточну локальну дату пристрою User.",
+                    "field": "date",
+                    "rule": "not_after_client_local_date"
+                  }
+                }
+              },
+              "categoryTypeMismatch": {
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Тип Category повинен відповідати типу Transaction.",
+                    "field": "category_id",
+                    "rule": "category_type_matches_transaction_type"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Дані неможливо прочитати або стійко змінити",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+            "examples": {
+              "readError": {
+                "value": {
+                  "error": {
+                    "code": "DATA_READ_ERROR",
+                    "message": "Збережені дані неможливо прочитати. Дані не було змінено."
+                  }
+                }
+              },
+              "writeError": {
+                "value": {
+                  "error": {
+                    "code": "DATA_WRITE_ERROR",
+                    "message": "Результат операції неможливо стійко зберегти. Часткові зміни скасовано."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
