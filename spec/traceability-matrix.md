@@ -32,3 +32,47 @@
 | `REQ-NF-004` | `AC-029` | `BDD-016` | `T-025` [#3](https://github.com/01ena-shpak/personal-finance-system/issues/3), `T-014` [#9](https://github.com/01ena-shpak/personal-finance-system/issues/9), `T-021` [#22](https://github.com/01ena-shpak/personal-finance-system/issues/22), `T-023` [#24](https://github.com/01ena-shpak/personal-finance-system/issues/24), `T-024` [#25](https://github.com/01ena-shpak/personal-finance-system/issues/25) | | | |
 | `REQ-NF-005` | `AC-030` | `BDD-002`, `BDD-006`, `BDD-007` | `T-001` [#1](https://github.com/01ena-shpak/personal-finance-system/issues/1), `T-025` [#3](https://github.com/01ena-shpak/personal-finance-system/issues/3), `T-016` [#4](https://github.com/01ena-shpak/personal-finance-system/issues/4), `T-017` [#5](https://github.com/01ena-shpak/personal-finance-system/issues/5), `T-015` [#10](https://github.com/01ena-shpak/personal-finance-system/issues/10), `T-003` [#11](https://github.com/01ena-shpak/personal-finance-system/issues/11), `T-004` [#12](https://github.com/01ena-shpak/personal-finance-system/issues/12), `T-006` [#13](https://github.com/01ena-shpak/personal-finance-system/issues/13), `T-007` [#16](https://github.com/01ena-shpak/personal-finance-system/issues/16), `T-023` [#24](https://github.com/01ena-shpak/personal-finance-system/issues/24), `T-024` [#25](https://github.com/01ena-shpak/personal-finance-system/issues/25) | | | |
 | `REQ-NF-006` | `AC-031` | | `T-001` [#1](https://github.com/01ena-shpak/personal-finance-system/issues/1), `T-025` [#3](https://github.com/01ena-shpak/personal-finance-system/issues/3), `T-022` [#23](https://github.com/01ena-shpak/personal-finance-system/issues/23), `T-024` [#25](https://github.com/01ena-shpak/personal-finance-system/issues/25) | | | |
+
+## Простежуваність REST API (лабораторна №4)
+
+Розділ доповнює початкову матрицю й не замінює попередні зв’язки з Acceptance Criteria, BDD Scenario, Ticket, Test, Code та Documentation. URI наведено у вигляді фактичних OpenAPI paths; базовий префікс `/api` визначено в `servers`. Назви в дужках — точні `operationId` зі `spec/openapi.json`.
+
+| Requirement ID | API operations / contract rules | API evidence |
+|---|---|---|
+| `REQ-F-001` | POST `/categories` (`createCategory`); PATCH `/categories/{category_id}` (`renameCategory`); DELETE `/categories/{category_id}` (`deleteCategory`); POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`); DELETE `/transactions/{transaction_id}` (`deleteTransaction`) | Persistence та успішна відповідь лише після збереження: `docs/api-resource-model.md`, розділ 5; `docs/api-operation-contracts.md`, розділ 1; `x-req-ids` |
+| `REQ-F-002` | POST `/transactions` (`createTransaction`); GET `/transactions` (`listTransactions`); PATCH `/transactions/{transaction_id}` (`updateTransaction`); GET `/financial-summary` (`getFinancialSummary`) | UAH і десяткові рядки Amount/SignedMoney: `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-003` | POST `/transactions` (`createTransaction`) | TransactionCreate і незмінний ID: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-004` | POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | Transaction type та Amount validation: `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-005` | POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | `X-Client-Local-Date` і правило дати: `docs/api-resource-model.md`; `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-006` | POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | Nullable/optional description, maxLength 255: `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-007` | POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | Відповідність типів Transaction і Category: operation descriptions; `x-req-ids` |
+| `REQ-F-008` | PATCH `/transactions/{transaction_id}` (`updateTransaction`) | Частковий PATCH із незмінним Transaction ID: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-009` | DELETE `/transactions/{transaction_id}` (`deleteTransaction`) | Остаточне видалення, 204 No Content: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-010` | POST `/categories` (`createCategory`) | CategoryCreate і незмінний ID: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-011` | POST `/categories` (`createCategory`); PATCH `/categories/{category_id}` (`renameCategory`) | Trim, name validation та унікальність у межах типу: operation descriptions; `x-req-ids` |
+| `REQ-F-012` | GET `/categories` (`listCategories`) | CategoryListResponse: `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-013` | PATCH `/categories/{category_id}` (`renameCategory`) | Перейменування без зміни ID/type: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-014` | DELETE `/categories/{category_id}` (`deleteCategory`) | 204, 404 і CATEGORY_IN_USE/409: `docs/api-operation-contracts.md`; `x-req-ids` |
+| `REQ-F-015` | GET `/transactions` (`listTransactions`) | TransactionListResponse: `docs/api-schemas.md`; `x-req-ids` |
+| `REQ-F-016` | GET `/transactions` (`listTransactions`) | Сортування від новіших дат до старіших: operation description; `x-req-ids` |
+| `REQ-F-017` | GET `/transactions` (`listTransactions`) | Query filters `type`, `category_id`, `date_from`, `date_to`: reusable parameters; `x-req-ids` |
+| `REQ-F-018` | GET `/transactions` (`listTransactions`) | Включний Date Range і відхилення некоректного діапазону: operation description/422; `x-req-ids` |
+| `REQ-F-019` | GET `/transactions` (`listTransactions`) | Порожній список без збережених Transaction: list schema й operation description; `x-req-ids` |
+| `REQ-F-020` | GET `/transactions` (`listTransactions`) | Порожній результат Filter: list schema й operation description; `x-req-ids` |
+| `REQ-F-021` | GET `/financial-summary` (`getFinancialSummary`) | `total_income`: FinancialSummary schema; `x-req-ids` |
+| `REQ-F-022` | GET `/financial-summary` (`getFinancialSummary`) | `total_expenses`: FinancialSummary schema; `x-req-ids` |
+| `REQ-F-023` | GET `/financial-summary` (`getFinancialSummary`) | `current_balance`: FinancialSummary schema; `x-req-ids` |
+| `REQ-F-024` | GET `/financial-summary` (`getFinancialSummary`) | Підсумки за всіма Transaction без Filter: operation description; `x-req-ids` |
+| `REQ-NF-001` | Усі шість POST/PATCH/DELETE operations (`createCategory`, `renameCategory`, `deleteCategory`, `createTransaction`, `updateTransaction`, `deleteTransaction`) | Наскрізне правило durable success: `docs/api-resource-model.md`, розділ 5; `docs/api-operation-contracts.md`, розділ 1; `x-req-ids` |
+| `REQ-NF-002` | Усі шість POST/PATCH/DELETE operations (`createCategory`, `renameCategory`, `deleteCategory`, `createTransaction`, `updateTransaction`, `deleteTransaction`) | Наскрізне правило атомарної помилки без часткових змін: ті самі contract rules; `x-req-ids` |
+| `REQ-NF-003` | GET `/categories` (`listCategories`); GET `/transactions` (`listTransactions`); GET `/financial-summary` (`getFinancialSummary`) | DATA_READ_ERROR/500 без зміни даних: `ErrorResponse`, operation responses; `x-req-ids` |
+| `REQ-NF-004` | POST `/categories` (`createCategory`); PATCH `/categories/{category_id}` (`renameCategory`); POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | `name` і `description` як дані, schemas забороняють невідомі поля; `x-req-ids` |
+| `REQ-NF-005` | POST `/categories` (`createCategory`); PATCH `/categories/{category_id}` (`renameCategory`); POST `/transactions` (`createTransaction`); PATCH `/transactions/{transaction_id}` (`updateTransaction`) | `ErrorResponse.error.field/rule`, validation responses; `docs/api-schemas.md`, розділ 7; `x-req-ids` |
+| `REQ-NF-006` | GET `/categories` (`listCategories`); GET `/transactions` (`listTransactions`); GET `/financial-summary` (`getFinancialSummary`) | Узгоджені JSON-терміни й response schemas: `spec/glossary.md`, `docs/api-schemas.md`; `x-req-ids` |
+
+### Результат звірки API traceability
+
+- функціональні вимоги: 24/24 мають operation або наскрізне правило контракту;
+- нефункціональні вимоги: 6/6 мають operation або наскрізне правило контракту;
+- нових endpoint для наскрізних вимог не створено;
+- відповідність наведених operationId до `x-req-ids` у `spec/openapi.json`: 30/30 REQ-ID, розбіжностей 0.
