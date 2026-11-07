@@ -1,4 +1,4 @@
-# Перевірка API-GATE лабораторної №4
+# API-GATE 
 
 **Дата перевірки:** 2026-10-31  
 **Обсяг:** REST API contract і Prism mock; без FastAPI, SQLite, бізнес-логіки та Flet-клієнта  
