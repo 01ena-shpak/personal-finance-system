@@ -1,16 +1,24 @@
 from collections.abc import Iterator
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
+from src.main import create_app
 
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    with TestClient(app) as test_client:
-        yield test_client
+    test_id = uuid4().hex
+    database_path = Path.cwd() / f".category-test-{test_id}.sqlite3"
+    log_path = Path.cwd() / f".category-test-{test_id}.log"
+    try:
+        with TestClient(create_app(database_path, log_path)) as test_client:
+            yield test_client
+    finally:
+        database_path.unlink(missing_ok=True)
+        log_path.unlink(missing_ok=True)
 
 
 def unique_name(prefix: str = "Категорія") -> str:
