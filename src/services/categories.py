@@ -23,6 +23,10 @@ class CategoryNotFoundError(Exception):
     pass
 
 
+class CategoryInUseError(Exception):
+    pass
+
+
 class DataWriteError(Exception):
     pass
 
@@ -124,6 +128,10 @@ class CategoryService:
     def delete(self, category_id: int) -> None:
         try:
             deleted = self.repository.delete(category_id)
+        except sqlite3.IntegrityError as exception:
+            raise CategoryInUseError(
+                "Category не можна видалити, оскільки її використовує Transaction."
+            ) from exception
         except sqlite3.Error as exception:
             raise DataWriteError(
                 "Результат зміни неможливо стійко й атомарно зберегти."

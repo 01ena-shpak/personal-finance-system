@@ -10,6 +10,7 @@ class CategoryRepository:
     def connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
     def initialize(self) -> None:

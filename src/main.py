@@ -6,16 +6,25 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.categories import router as categories_router
+from src.api.transactions import router as transactions_router
 from src.repositories.categories import CategoryRepository
+from src.repositories.transactions import TransactionRepository
 from src.services.categories import (
     CategoryConflictError,
+    CategoryInUseError,
     CategoryNotFoundError,
     CategoryService,
     CategoryValidationError,
     DataReadError,
     DataWriteError,
+)
+from src.services.transactions import (
+    TransactionNotFoundError,
+    TransactionService,
+    TransactionValidationError,
 )
 
 
@@ -73,6 +82,8 @@ def create_app(
 ) -> FastAPI:
     repository = CategoryRepository(Path(database_path))
     service = CategoryService(repository)
+    transaction_repository = TransactionRepository(Path(database_path))
+    transaction_service = TransactionService(transaction_repository, repository)
     application_log_path = Path(log_path)
 
     @asynccontextmanager
@@ -88,6 +99,7 @@ def create_app(
         LOGGER.addHandler(file_handler)
         try:
             repository.initialize()
+            transaction_repository.initialize()
             LOGGER.info("database_initialized")
             yield
         finally:
@@ -99,12 +111,14 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.category_service = service
+    application.state.transaction_service = transaction_service
+    application.state.transaction_repository = transaction_repository
 
     @application.middleware("http")
     async def request_logging_and_content_type(request: Request, call_next):
         LOGGER.info("request_started method=%s path=%s", request.method, request.url.path)
         if request.method in {"POST", "PATCH"} and request.url.path.startswith(
-            "/api/categories"
+            ("/api/categories", "/api/transactions")
         ):
             content_type = request.headers.get("content-type", "")
             if not is_valid_json_content_type(content_type):
@@ -165,6 +179,23 @@ def create_app(
             rule=validation_rule(error["type"]),
         )
 
+    @application.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(
+        request: Request,
+        exception: StarletteHTTPException,
+    ) -> JSONResponse:
+        if exception.status_code == 405:
+            LOGGER.warning("method_not_allowed path=%s", request.url.path)
+            return error_response(
+                405,
+                "METHOD_NOT_ALLOWED",
+                "HTTP-метод не підтримується для цього URI.",
+            )
+        return JSONResponse(
+            status_code=exception.status_code,
+            content={"detail": exception.detail},
+        )
+
     @application.exception_handler(CategoryValidationError)
     async def category_validation_handler(
         request: Request,
@@ -198,6 +229,39 @@ def create_app(
             rule="unique_case_insensitive_within_type",
         )
 
+    @application.exception_handler(TransactionValidationError)
+    async def transaction_validation_handler(
+        request: Request,
+        exception: TransactionValidationError,
+    ) -> JSONResponse:
+        LOGGER.warning(
+            "transaction_validation_failed path=%s field=%s rule=%s",
+            request.url.path,
+            exception.field,
+            exception.rule,
+        )
+        return error_response(
+            422,
+            "VALIDATION_ERROR",
+            exception.message,
+            field=exception.field,
+            rule=exception.rule,
+        )
+
+    @application.exception_handler(TransactionNotFoundError)
+    async def transaction_not_found_handler(
+        request: Request,
+        exception: TransactionNotFoundError,
+    ) -> JSONResponse:
+        LOGGER.warning("transaction_resource_not_found path=%s", request.url.path)
+        return error_response(
+            404,
+            "RESOURCE_NOT_FOUND",
+            str(exception),
+            field="id",
+            rule="resource_exists",
+        )
+
     @application.exception_handler(CategoryNotFoundError)
     async def category_not_found_handler(
         request: Request,
@@ -212,12 +276,20 @@ def create_app(
             rule="resource_exists",
         )
 
+    @application.exception_handler(CategoryInUseError)
+    async def category_in_use_handler(
+        request: Request,
+        exception: CategoryInUseError,
+    ) -> JSONResponse:
+        LOGGER.warning("category_in_use path=%s", request.url.path)
+        return error_response(409, "CATEGORY_IN_USE", str(exception))
+
     @application.exception_handler(DataWriteError)
     async def data_write_handler(
         request: Request,
         exception: DataWriteError,
     ) -> JSONResponse:
-        LOGGER.exception("category_write_failed path=%s", request.url.path)
+        LOGGER.exception("data_write_failed path=%s", request.url.path)
         return error_response(500, "DATA_WRITE_ERROR", str(exception))
 
     @application.exception_handler(DataReadError)
@@ -225,10 +297,11 @@ def create_app(
         request: Request,
         exception: DataReadError,
     ) -> JSONResponse:
-        LOGGER.exception("category_read_failed path=%s", request.url.path)
+        LOGGER.exception("data_read_failed path=%s", request.url.path)
         return error_response(500, "DATA_READ_ERROR", str(exception))
 
     application.include_router(categories_router, prefix="/api")
+    application.include_router(transactions_router, prefix="/api")
     return application
 
 

@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from pathlib import Path
+import sqlite3
 from uuid import uuid4
 
 import pytest
@@ -353,7 +354,6 @@ def test_transaction_description_with_code_syntax_is_plain_text(
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires GET Transaction to verify unchanged state")
 def test_rejected_create_transaction_does_not_change_state(
     client: TestClient,
 ) -> None:
@@ -461,7 +461,6 @@ def test_list_transactions_rejects_unknown_or_repeated_query_parameter(
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_list_transactions_returns_full_records_sorted_by_date(
     client: TestClient,
 ) -> None:
@@ -501,7 +500,6 @@ def test_list_transactions_returns_full_records_sorted_by_date(
     }
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 @pytest.mark.parametrize("filter_kind", ["type", "category", "date", "combined"])
 def test_list_transactions_applies_each_filter_and_combines_with_and(
     client: TestClient,
@@ -550,7 +548,6 @@ def test_list_transactions_applies_each_filter_and_combines_with_and(
     assert response.json() == expected
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_list_transactions_returns_empty_array_when_filters_do_not_match(
     client: TestClient,
 ) -> None:
@@ -606,7 +603,6 @@ def test_patch_missing_transaction_returns_not_found(client: TestClient) -> None
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 @pytest.mark.parametrize(
     "patch",
     [
@@ -645,7 +641,6 @@ def test_patch_transaction_updates_only_supplied_fields_and_preserves_id(
     assert response.json()["id"] == created["id"]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_can_change_type_with_matching_category(
     client: TestClient,
 ) -> None:
@@ -673,7 +668,6 @@ def test_patch_transaction_can_change_type_with_matching_category(
     assert response.json()["id"] == created["id"]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 @pytest.mark.parametrize(
     ("patch", "expected_field"),
     [
@@ -723,7 +717,6 @@ def test_patch_transaction_rejects_invalid_body_without_changing_state(
     assert listed.json() == [created]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_rejects_future_date_without_changing_state(
     client: TestClient,
 ) -> None:
@@ -752,7 +745,6 @@ def test_patch_transaction_rejects_future_date_without_changing_state(
     assert client.get("/api/transactions").json() == [created]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_rejects_category_type_mismatch(
     client: TestClient,
 ) -> None:
@@ -782,7 +774,6 @@ def test_patch_transaction_rejects_category_type_mismatch(
     assert client.get("/api/transactions").json() == [created]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_requires_client_local_date(client: TestClient) -> None:
     """REQ-F-005, REQ-F-008, REQ-NF-005; ClientLocalDate contract."""
     category = create_category(client, "income")
@@ -806,7 +797,6 @@ def test_patch_transaction_requires_client_local_date(client: TestClient) -> Non
     assert client.get("/api/transactions").json() == [created]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_rejects_missing_category(client: TestClient) -> None:
     """REQ-F-007, REQ-F-008; PATCH 404 contract."""
     category = create_category(client, "income")
@@ -833,7 +823,6 @@ def test_patch_transaction_rejects_missing_category(client: TestClient) -> None:
     assert client.get("/api/transactions").json() == [created]
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_patch_transaction_description_with_code_syntax_is_plain_text(
     client: TestClient,
 ) -> None:
@@ -901,7 +890,6 @@ def test_transaction_resource_rejects_unsupported_method(client: TestClient) -> 
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_delete_transaction_returns_no_content_and_removes_it_from_list(
     client: TestClient,
 ) -> None:
@@ -924,7 +912,6 @@ def test_delete_transaction_returns_no_content_and_removes_it_from_list(
     assert listed.json() == []
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction")
 def test_repeated_delete_transaction_returns_not_found(client: TestClient) -> None:
     """API-N-025; DELETE operation contract."""
     category = create_category(client, "income")
@@ -947,3 +934,126 @@ def test_repeated_delete_transaction_returns_not_found(client: TestClient) -> No
         expected_field="id",
         expected_rule="resource_exists",
     )
+
+
+def remove_sqlite_artifacts(database_path: Path, log_path: Path) -> None:
+    for path in (
+        database_path,
+        database_path.with_name(f"{database_path.name}-wal"),
+        database_path.with_name(f"{database_path.name}-shm"),
+        log_path,
+    ):
+        path.unlink(missing_ok=True)
+
+
+def test_transaction_mutations_persist_after_app_restart() -> None:
+    """API-P-011; REQ-F-001, REQ-NF-001; AC-001, AC-026."""
+    test_id = uuid4().hex
+    database_path = Path.cwd() / f".category-test-restart-{test_id}.sqlite3"
+    log_path = Path.cwd() / f".category-test-restart-{test_id}.log"
+    try:
+        with TestClient(create_app(database_path, log_path)) as first_client:
+            category = create_category(first_client, "income")
+            first = first_client.post(
+                "/api/transactions",
+                json=transaction_body(int(category["id"]), amount="100.00"),
+                headers=CLIENT_HEADERS,
+            )
+            second = first_client.post(
+                "/api/transactions",
+                json=transaction_body(int(category["id"]), amount="200.00"),
+                headers=CLIENT_HEADERS,
+            )
+            assert first.status_code == 201
+            assert second.status_code == 201
+            updated = first_client.patch(
+                f"/api/transactions/{first.json()['id']}",
+                json={"amount": "125.00"},
+                headers=CLIENT_HEADERS,
+            )
+            deleted = first_client.delete(
+                f"/api/transactions/{second.json()['id']}"
+            )
+            assert updated.status_code == 200
+            assert deleted.status_code == 204
+            expected = [updated.json()]
+
+        with TestClient(create_app(database_path, log_path)) as restarted_client:
+            response = restarted_client.get("/api/transactions")
+
+        assert response.status_code == 200
+        assert response.json() == expected
+    finally:
+        remove_sqlite_artifacts(database_path, log_path)
+
+
+def test_unreadable_transaction_database_returns_data_read_error() -> None:
+    """API-N-028; REQ-NF-003; AC-028."""
+    test_id = uuid4().hex
+    database_path = Path.cwd() / f".category-test-corrupt-{test_id}.sqlite3"
+    log_path = Path.cwd() / f".category-test-corrupt-{test_id}.log"
+    try:
+        with TestClient(create_app(database_path, log_path)) as test_client:
+            database_path.write_bytes(b"not a sqlite database")
+            corrupted = database_path.read_bytes()
+
+            response = test_client.get("/api/transactions")
+
+            assert_error_response(
+                response,
+                expected_status=500,
+                expected_code="DATA_READ_ERROR",
+            )
+            assert database_path.read_bytes() == corrupted
+    finally:
+        remove_sqlite_artifacts(database_path, log_path)
+
+
+@pytest.mark.parametrize("operation", ["post", "patch", "delete"])
+def test_transaction_write_failure_rolls_back_entire_operation(
+    client: TestClient,
+    operation: str,
+) -> None:
+    """API-N-029; REQ-NF-002; AC-027."""
+    category = create_category(client, "income")
+    created = client.post(
+        "/api/transactions",
+        json=transaction_body(int(category["id"]), amount="100.00"),
+        headers=CLIENT_HEADERS,
+    )
+    assert created.status_code == 201
+    before = client.get("/api/transactions").json()
+
+    def fail_before_commit() -> None:
+        raise sqlite3.OperationalError("controlled pre-commit failure")
+
+    repository = client.app.state.transaction_repository
+    repository.before_commit = fail_before_commit
+    try:
+        if operation == "post":
+            response = client.post(
+                "/api/transactions",
+                json=transaction_body(int(category["id"]), amount="200.00"),
+                headers=CLIENT_HEADERS,
+            )
+        elif operation == "patch":
+            response = client.patch(
+                f"/api/transactions/{created.json()['id']}",
+                json={"amount": "200.00"},
+                headers=CLIENT_HEADERS,
+            )
+        else:
+            response = client.delete(
+                f"/api/transactions/{created.json()['id']}"
+            )
+    finally:
+        repository.before_commit = lambda: None
+
+    assert_error_response(
+        response,
+        expected_status=500,
+        expected_code="DATA_WRITE_ERROR",
+    )
+    after = client.get("/api/transactions")
+    assert after.status_code == 200
+    assert after.json() == before

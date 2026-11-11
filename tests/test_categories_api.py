@@ -463,10 +463,26 @@ def test_delete_missing_category_returns_not_found(client: TestClient) -> None:
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST Transaction and isolated SQLite")
 def test_delete_used_category_returns_conflict(client: TestClient) -> None:
     """API-N-009; BDD-004; REQ-F-014; AC-015."""
-    response = client.delete("/api/categories/2")
+    category = client.post(
+        "/api/categories",
+        json={"name": unique_name("Використана"), "type": "expense"},
+    ).json()
+    transaction = client.post(
+        "/api/transactions",
+        json={
+            "type": "expense",
+            "amount": "1.00",
+            "date": "2026-11-11",
+            "category_id": category["id"],
+            "description": None,
+        },
+        headers={"X-Client-Local-Date": "2026-11-11"},
+    )
+    assert transaction.status_code == 201
+
+    response = client.delete(f"/api/categories/{category['id']}")
 
     assert_error_response(
         response,
