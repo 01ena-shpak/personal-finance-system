@@ -36,6 +36,66 @@ class CategoryRepository:
             ).fetchone()
         return row is not None
 
+    def list_all(self) -> list[dict[str, object]]:
+        with closing(self.connect()) as connection:
+            rows = connection.execute(
+                "SELECT id, name, type FROM categories ORDER BY id"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_by_id(self, category_id: int) -> dict[str, object] | None:
+        with closing(self.connect()) as connection:
+            row = connection.execute(
+                "SELECT id, name, type FROM categories WHERE id = ?",
+                (category_id,),
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    def name_key_exists_for_other_category(
+        self,
+        category_id: int,
+        category_type: str,
+        name_key: str,
+    ) -> bool:
+        with closing(self.connect()) as connection:
+            row = connection.execute(
+                """
+                SELECT 1 FROM categories
+                WHERE type = ? AND name_key = ? AND id <> ?
+                """,
+                (category_type, name_key, category_id),
+            ).fetchone()
+        return row is not None
+
+    def rename(
+        self,
+        category_id: int,
+        name: str,
+        name_key: str,
+    ) -> dict[str, object] | None:
+        with closing(self.connect()) as connection:
+            with connection:
+                cursor = connection.execute(
+                    "UPDATE categories SET name = ?, name_key = ? WHERE id = ?",
+                    (name, name_key, category_id),
+                )
+                if cursor.rowcount == 0:
+                    return None
+                row = connection.execute(
+                    "SELECT id, name, type FROM categories WHERE id = ?",
+                    (category_id,),
+                ).fetchone()
+        return dict(row) if row is not None else None
+
+    def delete(self, category_id: int) -> bool:
+        with closing(self.connect()) as connection:
+            with connection:
+                cursor = connection.execute(
+                    "DELETE FROM categories WHERE id = ?",
+                    (category_id,),
+                )
+        return cursor.rowcount > 0
+
     def create(self, name: str, name_key: str, category_type: str) -> dict[str, object]:
         with closing(self.connect()) as connection:
             with connection:

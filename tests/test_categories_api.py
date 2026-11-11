@@ -269,7 +269,6 @@ def test_category_name_with_code_syntax_is_plain_text(client: TestClient) -> Non
     assert_category(response, expected_name=name, expected_type="expense")
 
 
-@pytest.mark.skip(reason="Blocked: requires an isolated empty SQLite database")
 def test_list_categories_returns_empty_array(client: TestClient) -> None:
     """API-P-002; REQ-F-012, REQ-NF-003, REQ-NF-006."""
     response = client.get("/api/categories")
@@ -278,7 +277,6 @@ def test_list_categories_returns_empty_array(client: TestClient) -> None:
     assert response.json() == []
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 def test_list_categories_returns_all_created_categories(client: TestClient) -> None:
     """API-P-002; BDD-001; REQ-F-012; AC-013."""
     income_name = unique_name("Дохід")
@@ -303,7 +301,6 @@ def test_list_categories_returns_all_created_categories(client: TestClient) -> N
     }
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 def test_rename_category_returns_full_category_without_changing_id_or_type(
     client: TestClient,
 ) -> None:
@@ -348,7 +345,6 @@ def test_rename_category_rejects_invalid_id(
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires a known missing ID in isolated SQLite")
 def test_rename_missing_category_returns_not_found(client: TestClient) -> None:
     """API-N-007; REQ-F-013."""
     response = client.patch(
@@ -365,7 +361,6 @@ def test_rename_missing_category_returns_not_found(client: TestClient) -> None:
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 @pytest.mark.parametrize(
     ("body", "expected_field"),
     [
@@ -399,7 +394,6 @@ def test_rename_category_rejects_invalid_body(
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 def test_rename_category_rejects_name_conflict(client: TestClient) -> None:
     """REQ-F-011, REQ-F-013, REQ-NF-005; AC-012, AC-014."""
     existing_name = unique_name("Наявна")
@@ -443,7 +437,6 @@ def test_delete_category_rejects_invalid_id(
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 def test_delete_unused_category_returns_no_content(client: TestClient) -> None:
     """API-P-004; BDD-004; REQ-F-001, REQ-F-014, REQ-NF-001; AC-015."""
     created = client.post(
@@ -457,7 +450,6 @@ def test_delete_unused_category_returns_no_content(client: TestClient) -> None:
     assert response.content == b""
 
 
-@pytest.mark.skip(reason="Blocked: requires a known missing ID in isolated SQLite")
 def test_delete_missing_category_returns_not_found(client: TestClient) -> None:
     """API-N-010; REQ-F-014."""
     response = client.delete("/api/categories/999")
@@ -483,7 +475,6 @@ def test_delete_used_category_returns_conflict(client: TestClient) -> None:
     )
 
 
-@pytest.mark.skip(reason="Blocked: requires POST and an isolated SQLite database")
 def test_repeated_delete_returns_not_found(client: TestClient) -> None:
     """REQ-F-014; DELETE operation contract."""
     created = client.post(

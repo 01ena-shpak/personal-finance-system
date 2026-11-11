@@ -11,8 +11,10 @@ from src.api.categories import router as categories_router
 from src.repositories.categories import CategoryRepository
 from src.services.categories import (
     CategoryConflictError,
+    CategoryNotFoundError,
     CategoryService,
     CategoryValidationError,
+    DataReadError,
     DataWriteError,
 )
 
@@ -196,6 +198,20 @@ def create_app(
             rule="unique_case_insensitive_within_type",
         )
 
+    @application.exception_handler(CategoryNotFoundError)
+    async def category_not_found_handler(
+        request: Request,
+        exception: CategoryNotFoundError,
+    ) -> JSONResponse:
+        LOGGER.warning("category_not_found path=%s", request.url.path)
+        return error_response(
+            404,
+            "RESOURCE_NOT_FOUND",
+            str(exception),
+            field="id",
+            rule="resource_exists",
+        )
+
     @application.exception_handler(DataWriteError)
     async def data_write_handler(
         request: Request,
@@ -203,6 +219,14 @@ def create_app(
     ) -> JSONResponse:
         LOGGER.exception("category_write_failed path=%s", request.url.path)
         return error_response(500, "DATA_WRITE_ERROR", str(exception))
+
+    @application.exception_handler(DataReadError)
+    async def data_read_handler(
+        request: Request,
+        exception: DataReadError,
+    ) -> JSONResponse:
+        LOGGER.exception("category_read_failed path=%s", request.url.path)
+        return error_response(500, "DATA_READ_ERROR", str(exception))
 
     application.include_router(categories_router, prefix="/api")
     return application
