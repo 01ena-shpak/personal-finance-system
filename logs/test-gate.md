@@ -38,3 +38,30 @@ python -m pytest tests/test_categories_api.py -q --tb=line -p no:cacheprovider
 - **DELETE `/api/categories/{category_id}` — RED:** активовано 3 stateful cases разом із 3 path-validation cases; 6/6 FAIL через відсутність DELETE operation (`405` замість `204`, `404` або `422`). `CATEGORY_IN_USE` залишено SKIPPED до реалізації Transaction. Реалізацію решти DELETE дозволяє затверджений TEST-GATE `GO`.
 - **DELETE `/api/categories/{category_id}` — GREEN:** 6 cases PASS; `CATEGORY_IN_USE` залишається єдиним SKIPPED.
 - **Підсумковий Category regression:** 40 PASS, 0 FAIL, 1 SKIPPED; рішення TEST-GATE `GO` залишається чинним.
+
+---
+
+# TEST-GATE: Transaction API
+
+**Дата перевірки:** 2026-11-11
+
+**Обсяг:** контрактні тести `POST`, `GET`, `PATCH`, `DELETE /api/transactions`
+
+**Рішення:** **GO** — затверджено студенткою 11.11.2026 для поетапної реалізації
+
+Тести повторно звірено із SRS, `AC-003`–`AC-009`, `AC-016`–`AC-021`, `BDD-005`–`BDD-011`, API-сценаріями та `spec/openapi.json`. Покрито структуру `Transaction`/`ErrorResponse`, суми, типи, дати, `X-Client-Local-Date`, Category/type, description, фільтри та їх AND/включні межі, сортування без фіксації порядку однакових дат, частковий PATCH, видалення, 400/404/405/415/422. Кожен case використовує окрему тимчасову SQLite та не залежить від порядку запуску.
+
+Команда:
+
+```powershell
+python -m pytest tests/test_transactions_api.py -q --tb=no -p no:cacheprovider
+```
+
+Результат після повторного аудиту: **92 collected; 0 PASS; 58 RED; 34 SKIPPED; 1 warning**.
+
+- Початкові **56 RED / 29 SKIPPED** перевірено: очікування коректні, а SKIP обґрунтовані stateful-передумовами. Аудит додав 2 незалежні RED для невідомого/повтореного query parameter та 5 SKIPPED для read-only PATCH-полів, обов’язкового PATCH-header, відсутньої Category і незмінності state після відхиленого POST.
+- **58 RED підтверджено студенткою** як коректну вихідну фазу TDD: Category-передумови успішно створюються, але Transaction routes відсутні й повертають `404` замість контрактних відповідей; для 404/405 також відсутній контрактний `ErrorResponse`.
+- **34 cases тимчасово SKIPPED:** незмінність state після відхиленого POST, заповнений список, сортування, фільтрація state, успішний і невалідний PATCH зі збереженням попереднього стану, успішний і повторний DELETE. Перед реалізацією кожної відповідної поведінки пов’язані SKIPPED-тести обов’язково активуються, запускаються та перевіряються у фазі RED.
+- Category regression: **40 PASS, 1 SKIPPED**; наявний Category-набір не змінено.
+
+Відкладене покриття: `API-P-011` додається після GREEN CRUD, коли одну SQLite можна повторно відкрити новим app instance; `API-N-028` — після реалізації Transaction read/repository та контрактного `DATA_READ_ERROR`; `API-N-029` — після появи контрольованої точки збою перед SQLite commit для POST/PATCH/DELETE. Ці reliability cases виконуються до фінального regression, але не блокують TEST-GATE для початку CRUD. Частина `AC-009` про фінансові показники перевірятиметься у блоці Financial Summary. Warning deprecation FastAPI/Starlette TestClient на RED не впливає.
