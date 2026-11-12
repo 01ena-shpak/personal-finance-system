@@ -16,6 +16,7 @@ from src.api.contract import (
     METHOD_NOT_ALLOWED,
     NOT_FOUND,
     TRANSACTION_FILTER_PARAMETERS,
+    TRANSACTION_FILTER_VALIDATION_ERROR,
     UNSUPPORTED_MEDIA_TYPE,
     VALIDATION_ERROR,
 )
@@ -80,8 +81,8 @@ class TransactionPatch(BaseModel):
 
 def transaction_filters(
     request: Request,
-) -> tuple[str | None, int | None, str | None, str | None]:
-    allowed = {"type", "category_id", "date_from", "date_to"}
+) -> tuple[str | None, int | None, str | None, str | None, str | None]:
+    allowed = {"type", "category_id", "date_from", "date_to", "search"}
     for key in request.query_params:
         if key not in allowed:
             raise TransactionValidationError(
@@ -115,11 +116,29 @@ def transaction_filters(
                 "category_id",
                 "positive_integer",
             )
+
+    raw_search = request.query_params.get("search")
+    search: str | None = None
+    if raw_search is not None:
+        search = raw_search.strip()
+        if not search:
+            raise TransactionValidationError(
+                "Параметр search після видалення крайніх пробілів не може бути порожнім.",
+                "search",
+                "non_blank",
+            )
+        if len(search) > 255:
+            raise TransactionValidationError(
+                "Параметр search після видалення крайніх пробілів не може містити понад 255 символів.",
+                "search",
+                "max_length_255",
+            )
     return (
         transaction_type,
         category_id,
         request.query_params.get("date_from"),
         request.query_params.get("date_to"),
+        search,
     )
 
 
@@ -163,14 +182,30 @@ def create_transaction(
     operation_id="listTransactions",
     responses={
         405: METHOD_NOT_ALLOWED,
-        422: VALIDATION_ERROR,
+        422: TRANSACTION_FILTER_VALIDATION_ERROR,
         500: INTERNAL_SERVER_ERROR,
     },
-    openapi_extra={"parameters": TRANSACTION_FILTER_PARAMETERS},
+    openapi_extra={
+        "parameters": TRANSACTION_FILTER_PARAMETERS,
+        "x-req-ids": [
+            "REQ-F-002",
+            "REQ-F-015",
+            "REQ-F-016",
+            "REQ-F-017",
+            "REQ-F-018",
+            "REQ-F-019",
+            "REQ-F-020",
+            "REQ-NF-003",
+            "REQ-NF-006",
+            "ADD-L5-F-001",
+        ],
+    },
 )
 def list_transactions(request: Request) -> list[TransactionResponse]:
     service: TransactionService = request.app.state.transaction_service
-    transaction_type, category_id, date_from, date_to = transaction_filters(request)
+    transaction_type, category_id, date_from, date_to, search = transaction_filters(
+        request
+    )
     return [
         TransactionResponse(**transaction)
         for transaction in service.list_all(
@@ -178,6 +213,7 @@ def list_transactions(request: Request) -> list[TransactionResponse]:
             category_id=category_id,
             date_from=date_from,
             date_to=date_to,
+            search=search,
         )
     ]
 

@@ -125,6 +125,7 @@ class TransactionService:
         category_id: int | None,
         date_from: str | None,
         date_to: str | None,
+        search: str | None,
     ) -> list[dict[str, object]]:
         if (date_from is None) != (date_to is None):
             raise TransactionValidationError(
@@ -147,6 +148,7 @@ class TransactionService:
                 category_id=category_id,
                 date_from=date_from,
                 date_to=date_to,
+                search=search,
             )
         except sqlite3.Error as exception:
             raise DataReadError("Збережені дані неможливо прочитати.") from exception

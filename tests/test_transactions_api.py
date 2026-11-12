@@ -598,7 +598,7 @@ def test_search_transactions_uses_trimmed_unicode_casefold_substring(
         category,
         transaction_type="income",
         date="2026-10-30",
-        description="Нараховано щомісячну премію за жовтень",
+        description="Щомісячна премія за жовтень",
     )
     create_transaction_record(
         client,

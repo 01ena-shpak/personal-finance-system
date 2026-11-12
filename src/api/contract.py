@@ -66,6 +66,65 @@ VALIDATION_ERROR = {
     "model": ErrorResponse,
     "description": "Параметр або body порушує контракт чи доменне правило",
 }
+TRANSACTION_FILTER_VALIDATION_ERROR = {
+    "model": ErrorResponse,
+    "description": "Параметр або body порушує контракт чи доменне правило",
+    "content": {
+        "application/json": {
+            "examples": {
+                "invalidDateRange": {
+                    "value": {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": (
+                                "Початкова дата Date Range не може бути "
+                                "пізнішою за кінцеву."
+                            ),
+                            "field": "date_range",
+                            "rule": "date_from_not_after_date_to",
+                        }
+                    }
+                },
+                "blankSearch": {
+                    "value": {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": (
+                                "Параметр search після видалення крайніх "
+                                "пробілів не може бути порожнім."
+                            ),
+                            "field": "search",
+                            "rule": "non_blank",
+                        }
+                    }
+                },
+                "searchTooLong": {
+                    "value": {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": (
+                                "Параметр search після видалення крайніх "
+                                "пробілів не може містити понад 255 символів."
+                            ),
+                            "field": "search",
+                            "rule": "max_length_255",
+                        }
+                    }
+                },
+                "repeatedSearch": {
+                    "value": {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "Query parameter search не можна повторювати.",
+                            "field": "search",
+                            "rule": "single_value",
+                        }
+                    }
+                },
+            }
+        }
+    },
+}
 INTERNAL_SERVER_ERROR = {
     "model": ErrorResponse,
     "description": "Дані неможливо прочитати або стійко змінити",
@@ -139,5 +198,29 @@ TRANSACTION_FILTER_PARAMETERS = [
                 "перевіряється семантично."
             ),
         },
+    },
+    {
+        "name": "search",
+        "in": "query",
+        "required": False,
+        "description": (
+            "Filter за literal substring у ненульовому Transaction description. "
+            "Перед перевіркою довжини з search видаляються початкові й кінцеві "
+            "пробіли; допустима нормалізована довжина 1..255 символів. Порівняння "
+            "нормалізованого search і description виконується без урахування "
+            "регістру через Unicode casefold(), з підтримкою українського тексту. "
+            "%, _, лапки та синтаксис команд є звичайним текстом. Відсутній "
+            "параметр не застосовує пошук; порожнє або пробільне значення дає "
+            "422/non_blank, значення понад 255 символів після trim — "
+            "422/max_length_255, повторений search — 422/single_value. Search "
+            "поєднується через AND з іншими Filter; відсутність збігів дає 200 і "
+            "порожній масив."
+        ),
+        "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+        },
+        "example": "премія",
     },
 ]

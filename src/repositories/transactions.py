@@ -88,6 +88,7 @@ class TransactionRepository:
         category_id: int | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        search: str | None = None,
     ) -> list[dict[str, object]]:
         conditions: list[str] = []
         values: list[object] = []
@@ -107,7 +108,17 @@ class TransactionRepository:
         )
         with closing(self.connect()) as connection:
             rows = connection.execute(query, values).fetchall()
-        return [self.row_to_transaction(row) for row in rows]
+        transactions = [self.row_to_transaction(row) for row in rows]
+        if search is None:
+            return transactions
+
+        normalized_search = search.casefold()
+        return [
+            transaction
+            for transaction in transactions
+            if isinstance(transaction["description"], str)
+            and normalized_search in transaction["description"].casefold()
+        ]
 
     def list_amounts_by_type(self) -> list[dict[str, str]]:
         with closing(self.connect()) as connection:
