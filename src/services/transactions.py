@@ -148,10 +148,17 @@ class TransactionService:
                 category_id=category_id,
                 date_from=date_from,
                 date_to=date_to,
-                search=search,
             )
         except sqlite3.Error as exception:
             raise DataReadError("Збережені дані неможливо прочитати.") from exception
+        if search is not None:
+            normalized_search = search.casefold()
+            transactions = [
+                transaction
+                for transaction in transactions
+                if isinstance(transaction["description"], str)
+                and normalized_search in transaction["description"].casefold()
+            ]
         LOGGER.info("transactions_listed count=%s", len(transactions))
         return transactions
 
