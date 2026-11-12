@@ -117,3 +117,35 @@ Category + Transaction regression: **138 PASS, 0 FAIL, 0 SKIPPED; 1 warning**. W
 - Рефакторинг: спільні storage errors винесено з Category service, composition-root змінні уточнено, невикористаний legacy `src/finance.py` видалено.
 - Файлове логування та ізоляція SQLite підтверджені; payload і фінансові значення не журналюються, тимчасові test artifacts відсутні.
 - Відкрита метаданна розбіжність: автоматично згенерований FastAPI `/openapi.json` не декларує всі error responses і вручну валідовані GET Transaction query parameters, хоча runtime behavior покритий контрактними тестами. Канонічний `spec/openapi.json` не змінено.
+
+---
+
+# TEST-GATE: ADD-L5-F-001 Transaction description search
+
+**Дата перевірки:** 2026-11-12
+
+**Issue:** [#28](https://github.com/01ena-shpak/personal-finance-system/issues/28)
+
+**Рішення:** **GO** — затверджено студенткою 12.11.2026
+
+За затвердженими `spec/addendum-lab5.md` і `spec/openapi.json` додано 14 нових pytest cases: 13 runtime cases для GET `/api/transactions` і 1 generated-OpenAPI case. Покрито Unicode `casefold()` для українського тексту, trim, literal substring, межі 1/255, порожнє, пробільне, 256-символьне й повторене значення, відсутність збігів, `description: null`, AND із чинними Filter та незмінне сортування.
+
+Команди й результати:
+
+```powershell
+python -m pytest tests/test_transactions_api.py -q -p no:cacheprovider -k search_transactions --tb=short
+# 13 RED, 97 deselected
+
+python -m pytest tests/test_openapi_documentation.py -q -p no:cacheprovider --tb=short
+# 2 PASS, 2 RED
+
+python -m pytest -q -p no:cacheprovider --tb=short
+# 145 PASS, 15 RED, 0 SKIPPED, 1 warning
+```
+
+- 13 runtime cases очікувано отримали `422`: чинний GET parser вважає `search` невідомим параметром і повертає `rule: known_query_parameter_only` замість пошуку або затверджених `non_blank`, `max_length_255`, `single_value`.
+- 2 documentation RED підтверджують, що FastAPI `/openapi.json` ще не містить `SearchFilter` і трьох search-specific правил 422. Один із них є новим case, другий — наявною динамічною перевіркою параметрів проти оновленого контракту.
+- Усі stateful передумови POST Category/Transaction і тимчасова SQLite працюють; помилок collection, fixtures або тестових очікувань не виявлено.
+- Решта 145 tests PASS. Єдине warning — наявне TestClient deprecation; воно не впливає на RED.
+
+Студентка підтвердила **13 RED runtime-тестів**, **2 RED documentation-тести** та **145 PASS регресійних перевірок**. Тести ізольовані, не залежать від порядку; рішення `TEST-GATE: GO` від 12.11.2026 дозволяє переходити до фази GREEN для `ADD-L5-F-001`.

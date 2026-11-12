@@ -55,6 +55,28 @@ def transaction_body(
     return body
 
 
+def create_transaction_record(
+    client: TestClient,
+    category: dict[str, object],
+    *,
+    transaction_type: str,
+    date: str,
+    description: str | None,
+) -> dict[str, object]:
+    response = client.post(
+        "/api/transactions",
+        json=transaction_body(
+            int(category["id"]),
+            type=transaction_type,
+            date=date,
+            description=description,
+        ),
+        headers=CLIENT_HEADERS,
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
 def assert_transaction(
     response,
     *,
@@ -564,6 +586,264 @@ def test_list_transactions_returns_empty_array_when_filters_do_not_match(
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_search_transactions_uses_trimmed_unicode_casefold_substring(
+    client: TestClient,
+) -> None:
+    """ADD-L5-P-001; ADD-L5-F-001; ADD-L5-AC-001, ADD-L5-AC-003."""
+    category = create_category(client, "income")
+    matching = create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-30",
+        description="Нараховано щомісячну премію за жовтень",
+    )
+    create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-29",
+        description="Основна заробітна плата",
+    )
+
+    response = client.get(
+        "/api/transactions",
+        params={"search": "  ПРЕМІЯ  "},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [matching]
+
+
+@pytest.mark.parametrize(
+    ("search", "matching_description", "nonmatching_description"),
+    [
+        ("%", "Знижка 10%", "Знижка без відсотка"),
+        ("_", "Позначка_витрати", "Позначка витрати"),
+        ("$(whoami)", "Текст $(whoami) без виконання", "Звичайний текст"),
+    ],
+)
+def test_search_transactions_treats_special_syntax_as_literal_text(
+    client: TestClient,
+    search: str,
+    matching_description: str,
+    nonmatching_description: str,
+) -> None:
+    """ADD-L5-B-003; ADD-L5-F-001; ADD-L5-AC-001."""
+    category = create_category(client, "expense")
+    matching = create_transaction_record(
+        client,
+        category,
+        transaction_type="expense",
+        date="2026-10-30",
+        description=matching_description,
+    )
+    create_transaction_record(
+        client,
+        category,
+        transaction_type="expense",
+        date="2026-10-29",
+        description=nonmatching_description,
+    )
+
+    response = client.get("/api/transactions", params={"search": search})
+
+    assert response.status_code == 200
+    assert response.json() == [matching]
+
+
+@pytest.mark.parametrize("length", [1, 255])
+def test_search_transactions_accepts_normalized_length_boundaries(
+    client: TestClient,
+    length: int,
+) -> None:
+    """ADD-L5-B-001; ADD-L5-F-001; ADD-L5-AC-004."""
+    category = create_category(client, "income")
+    search = "я" * length
+    matching = create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-30",
+        description=search,
+    )
+
+    response = client.get(
+        "/api/transactions",
+        params={"search": f"  {search}  "},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [matching]
+
+
+@pytest.mark.parametrize("search", ["", "   "])
+def test_search_transactions_rejects_blank_normalized_value(
+    client: TestClient,
+    search: str,
+) -> None:
+    """ADD-L5-N-002; ADD-L5-F-001; ADD-L5-AC-003."""
+    response = client.get("/api/transactions", params={"search": search})
+
+    assert_error_response(
+        response,
+        expected_status=422,
+        expected_code="VALIDATION_ERROR",
+        expected_field="search",
+        expected_rule="non_blank",
+    )
+
+
+def test_search_transactions_rejects_value_longer_than_255_after_trim(
+    client: TestClient,
+) -> None:
+    """ADD-L5-B-002; ADD-L5-F-001; ADD-L5-AC-004."""
+    response = client.get(
+        "/api/transactions",
+        params={"search": f"  {'я' * 256}  "},
+    )
+
+    assert_error_response(
+        response,
+        expected_status=422,
+        expected_code="VALIDATION_ERROR",
+        expected_field="search",
+        expected_rule="max_length_255",
+    )
+
+
+def test_search_transactions_rejects_repeated_parameter(client: TestClient) -> None:
+    """ADD-L5-N-003; ADD-L5-F-001; ADD-L5-AC-004."""
+    response = client.get("/api/transactions?search=премія&search=бонус")
+
+    assert_error_response(
+        response,
+        expected_status=422,
+        expected_code="VALIDATION_ERROR",
+        expected_field="search",
+        expected_rule="single_value",
+    )
+
+
+def test_search_transactions_returns_empty_for_no_match_and_null_description(
+    client: TestClient,
+) -> None:
+    """ADD-L5-N-001; ADD-L5-F-001; ADD-L5-AC-001, ADD-L5-AC-003."""
+    category = create_category(client, "income")
+    create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-30",
+        description=None,
+    )
+    create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-29",
+        description="Заробітна плата",
+    )
+
+    response = client.get(
+        "/api/transactions",
+        params={"search": "відсутній підрядок"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_search_transactions_combines_with_existing_filters_using_and(
+    client: TestClient,
+) -> None:
+    """ADD-L5-P-002; ADD-L5-F-001; ADD-L5-AC-002."""
+    target_category = create_category(client, "expense")
+    other_category = create_category(client, "expense")
+    target = create_transaction_record(
+        client,
+        target_category,
+        transaction_type="expense",
+        date="2026-10-15",
+        description="Щорічна премія",
+    )
+    create_transaction_record(
+        client,
+        target_category,
+        transaction_type="expense",
+        date="2026-09-30",
+        description="Щорічна премія",
+    )
+    create_transaction_record(
+        client,
+        other_category,
+        transaction_type="expense",
+        date="2026-10-15",
+        description="Щорічна премія",
+    )
+    create_transaction_record(
+        client,
+        target_category,
+        transaction_type="expense",
+        date="2026-10-15",
+        description="Комунальні послуги",
+    )
+
+    response = client.get(
+        "/api/transactions",
+        params={
+            "search": "ПРЕМІЯ",
+            "type": "expense",
+            "category_id": str(target_category["id"]),
+            "date_from": "2026-10-01",
+            "date_to": "2026-10-31",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [target]
+
+
+def test_search_transactions_preserves_date_descending_sort(
+    client: TestClient,
+) -> None:
+    """ADD-L5-F-001; ADD-L5-AC-002; REQ-F-016, AC-017."""
+    category = create_category(client, "income")
+    matching = [
+        create_transaction_record(
+            client,
+            category,
+            transaction_type="income",
+            date=date,
+            description=description,
+        )
+        for date, description in (
+            ("2026-10-01", "Премія за вересень"),
+            ("2026-10-30", "Премія за жовтень"),
+            ("2026-10-15", "Додаткова премія"),
+        )
+    ]
+    create_transaction_record(
+        client,
+        category,
+        transaction_type="income",
+        date="2026-10-31",
+        description="Основна зарплата",
+    )
+
+    response = client.get(
+        "/api/transactions",
+        params={"search": "премія"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == sorted(
+        matching,
+        key=lambda transaction: str(transaction["date"]),
+        reverse=True,
+    )
 
 
 @pytest.mark.parametrize("transaction_id", ["0", "-1", "not-an-integer"])

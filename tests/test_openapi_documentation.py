@@ -95,3 +95,30 @@ def test_generated_openapi_documents_transaction_query_parameters() -> None:
         if parameter["in"] == "query"
     }
     assert actual == expected
+
+
+def test_generated_openapi_documents_search_validation_rules() -> None:
+    approved = load_approved_spec()
+    generated = app.openapi()
+    approved_response_ref = approved["paths"]["/transactions"]["get"]["responses"][
+        "422"
+    ]
+    approved_response = resolve_local_ref(approved, approved_response_ref)
+    approved_examples = approved_response["content"]["application/json"]["examples"]
+    expected_rules = {
+        example["value"]["error"]["rule"]
+        for name, example in approved_examples.items()
+        if name in {"blankSearch", "searchTooLong", "repeatedSearch"}
+    }
+    actual_response = generated["paths"]["/api/transactions"]["get"]["responses"][
+        "422"
+    ]
+    actual_examples = actual_response["content"]["application/json"].get(
+        "examples", {}
+    )
+    actual_rules = {
+        example["value"]["error"]["rule"] for example in actual_examples.values()
+    }
+
+    assert expected_rules == {"non_blank", "max_length_255", "single_value"}
+    assert expected_rules <= actual_rules
