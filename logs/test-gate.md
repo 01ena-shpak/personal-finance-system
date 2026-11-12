@@ -82,3 +82,27 @@ python -m pytest tests/test_transactions_api.py -q --tb=no -p no:cacheprovider
 - **Reliability — GREEN:** 5 cases PASS: restart зберігає результат POST/PATCH/DELETE; пошкоджена тестова SQLite повертає `500 DATA_READ_ERROR` без зміни файла; контрольований збій до commit повертає `500 DATA_WRITE_ERROR` і повністю відкочує POST/PATCH/DELETE.
 - **Повна Transaction + Category regression:** 138 PASS, 0 FAIL, 0 SKIPPED; 1 TestClient deprecation warning не впливає на поведінку.
 - **LOGS:** окремий файловий smoke-check підтвердив `request_started`/`request_finished` і `transaction_created`/`listed`/`updated`/`deleted`; payload, Category name, amount і description до журналу не потрапляють. Тимчасові SQLite/log artifacts після тестів відсутні.
+
+---
+
+# TEST-GATE: Financial Summary API
+
+**Дата перевірки:** 2026-11-12
+
+**Обсяг:** контрактні тести `GET /api/financial-summary`
+
+**Рішення:** **GO** — затверджено студенткою 12.11.2026 після перевірки відповідності специфікації
+
+Підготовлено 5 незалежних cases за `API-P-010`, `REQ-F-002`, `REQ-F-021`–`REQ-F-024`, `AC-022`–`AC-025`, `BDD-012` і `spec/openapi.json`: порожня БД, Total Income/Expenses/Balance, від’ємний баланс, незалежність від Filter, точне десяткове сумування та перерахунок після POST/PATCH/DELETE Transaction. Усі використовують окрему тимчасову SQLite; SKIPPED немає. `API-N-028` і контрактний 405 не дублюються, оскільки вже перевірені незалежними cross-cutting тестами спільних read/error handlers.
+
+Команда:
+
+```powershell
+python -m pytest tests/test_financial_summary_api.py -q --tb=line -p no:cacheprovider
+```
+
+Результат: **5 collected; 0 PASS; 5 RED; 0 SKIPPED; 1 warning**. Усі cases отримали `404` замість контрактного `200`; Category/Transaction setup та ізольована SQLite працюють, тому RED підтверджує відсутність Financial Summary route, а не помилку тестового середовища.
+
+Category + Transaction regression: **138 PASS, 0 FAIL, 0 SKIPPED; 1 warning**. Warning — наявне TestClient deprecation і на результат не впливає.
+
+Відповідність 5 тестів SRS, Acceptance Criteria та затвердженому OpenAPI підтверджено; студентка затвердила **5 RED** і **138 PASS** регресії як підставу для TEST-GATE `GO`.
