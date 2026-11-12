@@ -19,9 +19,8 @@ from src.services.categories import (
     CategoryNotFoundError,
     CategoryService,
     CategoryValidationError,
-    DataReadError,
-    DataWriteError,
 )
+from src.services.errors import DataReadError, DataWriteError
 from src.services.transactions import (
     TransactionNotFoundError,
     TransactionService,
@@ -81,10 +80,13 @@ def create_app(
     database_path: str | Path = "data/personal_finance.sqlite3",
     log_path: str | Path = "logs/app.log",
 ) -> FastAPI:
-    repository = CategoryRepository(Path(database_path))
-    service = CategoryService(repository)
+    category_repository = CategoryRepository(Path(database_path))
+    category_service = CategoryService(category_repository)
     transaction_repository = TransactionRepository(Path(database_path))
-    transaction_service = TransactionService(transaction_repository, repository)
+    transaction_service = TransactionService(
+        transaction_repository,
+        category_repository,
+    )
     application_log_path = Path(log_path)
 
     @asynccontextmanager
@@ -99,7 +101,7 @@ def create_app(
         file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
         LOGGER.addHandler(file_handler)
         try:
-            repository.initialize()
+            category_repository.initialize()
             transaction_repository.initialize()
             LOGGER.info("database_initialized")
             yield
@@ -111,7 +113,7 @@ def create_app(
         title="Personal Finance System REST API",
         lifespan=lifespan,
     )
-    application.state.category_service = service
+    application.state.category_service = category_service
     application.state.transaction_service = transaction_service
     application.state.transaction_repository = transaction_repository
 

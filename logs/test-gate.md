@@ -106,3 +106,14 @@ python -m pytest tests/test_financial_summary_api.py -q --tb=line -p no:cachepro
 Category + Transaction regression: **138 PASS, 0 FAIL, 0 SKIPPED; 1 warning**. Warning — наявне TestClient deprecation і на результат не впливає.
 
 Відповідність 5 тестів SRS, Acceptance Criteria та затвердженому OpenAPI підтверджено; студентка затвердила **5 RED** і **138 PASS** регресії як підставу для TEST-GATE `GO`.
+
+---
+
+## REST API refactoring audit — 12.11.2026
+
+- Baseline до рефакторингу: **143 PASS, 0 FAIL, 0 SKIPPED**, 1 TestClient deprecation warning.
+- Після рефакторингу: **143 PASS, 0 FAIL, 0 SKIPPED**, те саме warning; зовнішня поведінка не змінилася.
+- Перевірено 9/9 операцій: ефективні URI `/api/...`, методи, success/error HTTP-коди, path/query/header parameters, request/response schemas та `ErrorResponse` відповідають затвердженому `spec/openapi.json`; operationId синхронізовано з контрактом.
+- Рефакторинг: спільні storage errors винесено з Category service, composition-root змінні уточнено, невикористаний legacy `src/finance.py` видалено.
+- Файлове логування та ізоляція SQLite підтверджені; payload і фінансові значення не журналюються, тимчасові test artifacts відсутні.
+- Відкрита метаданна розбіжність: автоматично згенерований FastAPI `/openapi.json` не декларує всі error responses і вручну валідовані GET Transaction query parameters, хоча runtime behavior покритий контрактними тестами. Канонічний `spec/openapi.json` не змінено.

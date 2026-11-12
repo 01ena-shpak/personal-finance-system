@@ -2,6 +2,7 @@ import logging
 import sqlite3
 
 from src.repositories.categories import CategoryRepository
+from src.services.errors import DataReadError, DataWriteError
 
 
 LOGGER = logging.getLogger("personal_finance")
@@ -24,14 +25,6 @@ class CategoryNotFoundError(Exception):
 
 
 class CategoryInUseError(Exception):
-    pass
-
-
-class DataWriteError(Exception):
-    pass
-
-
-class DataReadError(Exception):
     pass
 
 

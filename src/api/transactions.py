@@ -10,6 +10,15 @@ from pydantic import (
     model_validator,
 )
 
+from src.api.contract import (
+    BAD_REQUEST,
+    INTERNAL_SERVER_ERROR,
+    METHOD_NOT_ALLOWED,
+    NOT_FOUND,
+    TRANSACTION_FILTER_PARAMETERS,
+    UNSUPPORTED_MEDIA_TYPE,
+    VALIDATION_ERROR,
+)
 from src.services.transactions import TransactionService, TransactionValidationError
 
 
@@ -118,6 +127,15 @@ def transaction_filters(
     "/transactions",
     response_model=TransactionResponse,
     status_code=status.HTTP_201_CREATED,
+    operation_id="createTransaction",
+    responses={
+        400: BAD_REQUEST,
+        404: NOT_FOUND,
+        405: METHOD_NOT_ALLOWED,
+        415: UNSUPPORTED_MEDIA_TYPE,
+        422: VALIDATION_ERROR,
+        500: INTERNAL_SERVER_ERROR,
+    },
 )
 def create_transaction(
     payload: TransactionCreate,
@@ -139,7 +157,17 @@ def create_transaction(
     return TransactionResponse(**transaction)
 
 
-@router.get("/transactions", response_model=list[TransactionResponse])
+@router.get(
+    "/transactions",
+    response_model=list[TransactionResponse],
+    operation_id="listTransactions",
+    responses={
+        405: METHOD_NOT_ALLOWED,
+        422: VALIDATION_ERROR,
+        500: INTERNAL_SERVER_ERROR,
+    },
+    openapi_extra={"parameters": TRANSACTION_FILTER_PARAMETERS},
+)
 def list_transactions(request: Request) -> list[TransactionResponse]:
     service: TransactionService = request.app.state.transaction_service
     transaction_type, category_id, date_from, date_to = transaction_filters(request)
@@ -157,6 +185,15 @@ def list_transactions(request: Request) -> list[TransactionResponse]:
 @router.patch(
     "/transactions/{transaction_id}",
     response_model=TransactionResponse,
+    operation_id="updateTransaction",
+    responses={
+        400: BAD_REQUEST,
+        404: NOT_FOUND,
+        405: METHOD_NOT_ALLOWED,
+        415: UNSUPPORTED_MEDIA_TYPE,
+        422: VALIDATION_ERROR,
+        500: INTERNAL_SERVER_ERROR,
+    },
 )
 def update_transaction(
     payload: TransactionPatch,
@@ -179,6 +216,13 @@ def update_transaction(
 @router.delete(
     "/transactions/{transaction_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="deleteTransaction",
+    responses={
+        404: NOT_FOUND,
+        405: METHOD_NOT_ALLOWED,
+        422: VALIDATION_ERROR,
+        500: INTERNAL_SERVER_ERROR,
+    },
 )
 def delete_transaction(
     request: Request,

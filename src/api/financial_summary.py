@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.api.contract import INTERNAL_SERVER_ERROR, METHOD_NOT_ALLOWED
 from src.services.transactions import TransactionService
 
 
@@ -32,7 +33,15 @@ class FinancialSummaryResponse(BaseModel):
     current_balance: SignedMoney
 
 
-@router.get("/financial-summary", response_model=FinancialSummaryResponse)
+@router.get(
+    "/financial-summary",
+    response_model=FinancialSummaryResponse,
+    operation_id="getFinancialSummary",
+    responses={
+        405: METHOD_NOT_ALLOWED,
+        500: INTERNAL_SERVER_ERROR,
+    },
+)
 def get_financial_summary(request: Request) -> FinancialSummaryResponse:
     service: TransactionService = request.app.state.transaction_service
     return FinancialSummaryResponse(**service.financial_summary())
