@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.categories import router as categories_router
+from src.api.financial_summary import router as financial_summary_router
 from src.api.transactions import router as transactions_router
 from src.repositories.categories import CategoryRepository
 from src.repositories.transactions import TransactionRepository
@@ -302,6 +303,7 @@ def create_app(
 
     application.include_router(categories_router, prefix="/api")
     application.include_router(transactions_router, prefix="/api")
+    application.include_router(financial_summary_router, prefix="/api")
     return application
 
 

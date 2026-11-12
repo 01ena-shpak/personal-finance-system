@@ -153,6 +153,52 @@ class TransactionService:
         LOGGER.info("transactions_listed count=%s", len(transactions))
         return transactions
 
+    @staticmethod
+    def amount_to_cents(amount: str) -> int:
+        whole, fraction = amount.split(".")
+        if (
+            not whole.isdigit()
+            or len(fraction) != 2
+            or not fraction.isdigit()
+            or (len(whole) > 1 and whole.startswith("0"))
+            or (whole == "0" and fraction == "00")
+        ):
+            raise ValueError("Invalid stored amount")
+        return int(whole) * 100 + int(fraction)
+
+    @staticmethod
+    def cents_to_money(cents: int) -> str:
+        sign = "-" if cents < 0 else ""
+        whole, fraction = divmod(abs(cents), 100)
+        return f"{sign}{whole}.{fraction:02d}"
+
+    def financial_summary(self) -> dict[str, str]:
+        try:
+            amounts = self.repository.list_amounts_by_type()
+            total_income = 0
+            total_expenses = 0
+            for item in amounts:
+                cents = self.amount_to_cents(item["amount"])
+                if item["type"] == "income":
+                    total_income += cents
+                elif item["type"] == "expense":
+                    total_expenses += cents
+                else:
+                    raise ValueError("Invalid stored transaction type")
+        except (sqlite3.Error, ValueError) as exception:
+            raise DataReadError(
+                "Збережені дані неможливо прочитати або коректно підсумувати."
+            ) from exception
+
+        LOGGER.info("financial_summary_calculated transaction_count=%s", len(amounts))
+        return {
+            "total_income": self.cents_to_money(total_income),
+            "total_expenses": self.cents_to_money(total_expenses),
+            "current_balance": self.cents_to_money(
+                total_income - total_expenses
+            ),
+        }
+
     def update(
         self,
         transaction_id: int,

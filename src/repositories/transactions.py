@@ -109,6 +109,16 @@ class TransactionRepository:
             rows = connection.execute(query, values).fetchall()
         return [self.row_to_transaction(row) for row in rows]
 
+    def list_amounts_by_type(self) -> list[dict[str, str]]:
+        with closing(self.connect()) as connection:
+            rows = connection.execute(
+                "SELECT type, amount FROM transactions"
+            ).fetchall()
+        return [
+            {"type": str(row["type"]), "amount": str(row["amount"])}
+            for row in rows
+        ]
+
     def update(
         self,
         transaction_id: int,
