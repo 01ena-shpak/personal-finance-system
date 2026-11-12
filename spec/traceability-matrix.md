@@ -76,3 +76,18 @@
 - нефункціональні вимоги: 6/6 мають operation або наскрізне правило контракту;
 - нових endpoint для наскрізних вимог не створено;
 - відповідність наведених operationId до `x-req-ids` у `spec/openapi.json`: 30/30 REQ-ID, розбіжностей 0.
+
+## Доповнення лабораторної №5: пошук Transaction
+
+Розділ додає простежуваність затвердженої addendum-вимоги, не перенумеровує й не змінює базові `REQ-F-001`–`REQ-F-024` та `REQ-NF-001`–`REQ-NF-006`.
+
+| Requirement ID | Acceptance Criteria | Scenarios | Issue | API contract | Automated tests | Implementation | Documentation / evidence |
+|---|---|---|---|---|---|---|---|
+| `ADD-L5-F-001` | `ADD-L5-AC-001`–`ADD-L5-AC-004` | `ADD-L5-P-001`, `ADD-L5-P-002`, `ADD-L5-N-001`–`ADD-L5-N-003`, `ADD-L5-B-001`–`ADD-L5-B-003` | [#28](https://github.com/01ena-shpak/personal-finance-system/issues/28) | GET `/transactions` (`listTransactions`); `SearchFilter`; `TransactionFilterValidationError`; `x-req-ids` у `spec/openapi.json` | `tests/test_transactions_api.py`: `test_search_transactions_*`; `tests/test_openapi_documentation.py`: query parameters і search validation rules | `src/api/transactions.py`: parsing/validation/trim; `src/services/transactions.py`: Unicode `casefold()` literal substring та AND; `src/repositories/transactions.py`: базові Filter і date ordering; `src/api/contract.py`: generated OpenAPI metadata | `spec/addendum-lab5.md` (APPROVED, SPEC-ADDENDUM-GATE GO); `logs/test-gate.md` (TEST-GATE GO); `logs/verification-validation.md` (VERIFICATION PASS, VALIDATION PASS) |
+
+### Результат звірки після доповнення
+
+- базові вимоги: 30/30 збережено без втрати або зміни чинних зв’язків;
+- addendum-вимога: 1/1 має повний ланцюжок `Requirement → AC/scenario → Issue → OpenAPI → Test → Code → V&V`;
+- OpenAPI: 9/9 унікальних operationId присутні в матриці; `ADD-L5-F-001` входить до `x-req-ids` операції `listTransactions`;
+- невідповідних або осиротілих зв’язків у межах REST API лабораторної №5 не виявлено.
